@@ -3,8 +3,6 @@
   (:require [clojure.spec.alpha :as spec])
   (:require [clojure.string :as string]))
 
-(def puzzle-input (slurp "data/aoc2020/day4.data"))
-
 (defn split-passport-source-chunks [passport-source-chunks]
   (string/split passport-source-chunks #"\n\n"))
 
@@ -57,20 +55,11 @@
                       :passport/ecl :passport/pid]
              :opt-un [:passport/cid]))
 
-(defn solve [puzzle-input]
-  (->> puzzle-input
-       split-passport-source-chunks
-       (map parse-passport)
-       #_(filter #(spec/valid? :passport/passport %))
-       #_count))
+(def puzzle-input (slurp "data/aoc2020/day4.data"))
 
-(defn explain [puzzle-input]
-  (->> puzzle-input
-       split-passport-source-chunks
-       (map parse-passport)
-       (map #(spec/explain :passport/passport %))))
-
-(solve puzzle-input)
-
-;; spec/int-in
-;; int-in을 사용하려면 먼저 digits 을 numbers 로 변경해야 한다. parse 전에 validation 을 먼저 해야 할 것 같은데...
+;; solve part 2
+(->> puzzle-input
+     split-passport-source-chunks
+     (map parse-passport)
+     (filter #(spec/valid? :passport/passport %))
+     count)

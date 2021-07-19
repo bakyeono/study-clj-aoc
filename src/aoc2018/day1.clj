@@ -3,8 +3,6 @@
   (:require [clojure.string :as string]
             [util.util :as util]))
 
-(def puzzle-input (slurp "data/aoc2018/day1.data"))
-
 (defn parse-input [input]
   (->> input
        string/split-lines
@@ -16,17 +14,16 @@
 (defn history [start changes]
   (reductions + start changes))
 
-(defn solve-part1 [puzzle-input]
-  (->> puzzle-input
-       parse-input
-       reduce-frequency-changes))
+(def puzzle-input (slurp "data/aoc2018/day1.data"))
 
-(defn solve-part2 [puzzle-input]
-  (->> puzzle-input
-       parse-input
-       cycle
-       (history 0)
-       util/get-first-duplicated))
+;; solve part 1
+(->> puzzle-input
+     parse-input
+     reduce-frequency-changes)
 
-(solve-part1 puzzle-input)
-(solve-part2 puzzle-input)
+;; solve part 2
+(->> puzzle-input
+     parse-input
+     cycle
+     (history 0)
+     util/get-first-duplicated)

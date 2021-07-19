@@ -3,8 +3,6 @@
   (:require [clojure.string :as string])
   (:use [util util]))
 
-(def puzzle-input (slurp "data/aoc2020/day8.data"))
-
 (defn parse-program-line [line]
   [(keyword (first line))
    (Integer/parseInt (second line))])
@@ -27,13 +25,13 @@
       :acc (assoc process :pc (inc pc)       :acc (+ acc operand))
       :jmp (assoc process :pc (+ pc operand) :acc acc))))
 
-(defn solve-part1 [input]
-  (->> input
-       parse-program
-       init-process
-       (iterate step)
-       (filter #(get-first-duplicated (:history %)))
-       first
-       :acc))
+(def puzzle-input (slurp "data/aoc2020/day8.data"))
 
-(solve-part1 puzzle-input)
+;; solve part 1
+(->> puzzle-input
+     parse-program
+     init-process
+     (iterate step)
+     (filter #(get-first-duplicated (:history %)))
+     first
+     :acc)

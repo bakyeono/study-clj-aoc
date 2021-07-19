@@ -15,16 +15,14 @@
 (defn calc-multiple-of-factors [target number-of-factors numbers]
   (reduce * (find-factors target number-of-factors numbers)))
 
-(defn solve-part1 [puzzle-input]
-  (->> puzzle-input
-       parse-input
-       (calc-multiple-of-factors 2020 2)))
-(defn solve-part2 [puzzle-input]
-  (->> puzzle-input
-       parse-input
-       (calc-multiple-of-factors 2020 3)))
-
 (def puzzle-input (slurp "data/aoc2020/day1.data"))
 
-(solve-part1 puzzle-input)
-(solve-part2 puzzle-input)
+;; solve part 1
+(->> puzzle-input
+     parse-input
+     (calc-multiple-of-factors 2020 2))
+
+;; solve part 2
+(->> puzzle-input
+     parse-input
+     (calc-multiple-of-factors 2020 3))
