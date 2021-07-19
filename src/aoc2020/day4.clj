@@ -1,4 +1,4 @@
-;; https://adventofcode.com/2020/day/4$part2
+;; https://adventofcode.com/2020/day/4
 (ns aoc2020.day4
   (:require [clojure.spec.alpha :as spec])
   (:require [clojure.string :as string]))
