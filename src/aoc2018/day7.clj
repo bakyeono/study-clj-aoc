@@ -6,84 +6,180 @@
 (def rule-pattern #"Step ([A-Z]) must be finished before step ([A-Z]) can begin.")
 
 (defn parse-rule [rule-string]
-  (let [[_ [pre & _] [post & _]] (re-matches rule-pattern rule-string)]
-    [pre post]))
+  (let [[_ pre post] (re-matches rule-pattern rule-string)]
+    {:pre (keyword pre) :post (keyword post)}))
 
-(defn parse-rule-pairs [input]
+(defn parse-rules [input]
   (->> input
        string/split-lines
        (map parse-rule)))
 
-(defn build-directional-graph [rule-pairs]
-  (let [from-nodes (set (map first rule-pairs))
-        to-nodes (set (map second rule-pairs))
-        nodes (set/union from-nodes to-nodes)
-        independent-nodes (set/difference nodes to-nodes)
-        collect-following-nodes (fn [direction leading-node]
-                                  (let [rule-pairs (case direction
-                                                     :forward rule-pairs
-                                                     :backward (map reverse rule-pairs))]
-                                    [leading-node (->> rule-pairs
-                                                       (filter #(= (first %) leading-node))
-                                                       (map second)
-                                                       (into #{}))]))
-        forward-graph (into {} (map (partial collect-following-nodes :forward) from-nodes))
-        backward-graph (into {} (map (partial collect-following-nodes :backward) to-nodes))]
-    {:forward forward-graph :backward backward-graph
-     :from-nodes from-nodes :to-nodes to-nodes
-     :nodes nodes           :independent-nodes independent-nodes}))
+(defn prepare-todo
+  "작업 규칙 시퀀스와 작업 소요시간 함수로 할 일 시퀀스를 만든다.
 
-(defn find-full-path [number-of-workers work-seconds graph]
-  (let [workers (into [] (take number-of-workers
-                               (repeat {:available-at -1 :work nil})))
-        end? (fn [{:keys [done]}]
-               (= (:nodes graph) (set done)))
-        process (fn [{:keys [turn workers done]}]
-                  (let [done (->> workers
-                                  (filter #(and (= turn (:available-at %))
-                                                (:work %))) ; nil 제외
-                                  (map :work)
-                                  (into done))
-                        from-nodes-done? #(->> (set/difference (second %) (set done))
-                                               empty?)
-                        reachable-nodes (->> (filter from-nodes-done? (:backward graph))
-                                             (map first)
-                                             set)
-                        available-nodes (set/difference (set/union (:independent-nodes graph) reachable-nodes)
-                                                        (set done)
-                                                        (set (map :work workers)))
-                        available-worker-indexes (filter #(<= (:available-at (workers %)) turn)
-                                                         (range (count workers)))
-                        worker-index-and-node-pairs (map vector
-                                                         available-worker-indexes
-                                                         (sort available-nodes))
-                        workers (reduce (fn [workers [index node]]
-                                          (assoc workers index {:available-at (+ turn (work-seconds node))
-                                                                :work node}))
-                                        workers
-                                        worker-index-and-node-pairs)]
-                    {:turn (inc turn) :workers workers :done done}))]
-    (->> {:turn -1 :workers workers :done []}
-         (iterate process)
-         (drop-while (complement end?))
-         first)))
+  ## 인자
+  * rules: 작업의 선후 관계를 나타내는 규칙의 시퀀스. 예: [{:pre :A :post :B} {:pre :B :post :C}]
+  * work->seconds: 각 작업에 소요되는 시간을 구하는 함수. 예: #{:A 1 :B 2 :C 3}
 
-(defn work-seconds [base work]
-  (+ base (- (int work) (int \A))))
+  ## 반환
+  * 할 일을 담은 시퀀스. 예: [{:work :A :pre #{:B :C} :seconds 1}, ...]
+
+  ## 예
+  (prepare-todo [{:pre :A :post :B} {:pre :C :post :B}]
+                {:A 1 :B 2 :C 3})
+  => ({:work :A :seconds 1 :pre #{}}
+      {:work :B :seconds 2 :pre #{:A :C}}
+      {:work :C :seconds 3 :pre #{}})
+  "
+  [rules work->seconds]
+  (let [works (set/union (set (map :pre rules))
+                         (set (map :post rules)))
+        get-pre-works-of (fn [work]
+                           (->> rules
+                                (filter (fn [rule] (= (:post rule) work)))
+                                (map :pre)
+                                set))
+        make-todo-item (fn [work]
+                         {:work work
+                          :seconds (work->seconds work)
+                          :pre (get-pre-works-of work)})]
+    (map make-todo-item works)))
+
+(def default-worker {:available-at 0 :work nil})
+(defn prepare-workers [n]
+  (into [] (take n (repeat default-worker))))
+
+(defn init-plan [rules work->seconds number-of-workers]
+  "작업규칙, 작업->시간 함수, 워커의 수를 입력받아, 작업 초기 단계를 설정한다.
+
+  ## 인자
+  * rule: 작업의 선후 관계를 나타내는 규칙의 시퀀스. 예: [{:pre :A :post :B} {:pre :B :post :C}]
+  * work->seconds: 각 작업에 소요되는 시간을 구하는 함수. 예: #{:A 1 :B 2 :C 3}
+  * number-of-workers: 워커의 수. 예: 1
+
+  ## 반환
+  * 작업 단계: 다음 키를 갖는 해시 맵
+    * :at      작업 단계의 시각 (초)
+    * :todo    작업 단계에서 남은 할 일의 시퀀스
+    * :done    완료한 작업의 벡터
+    * :workers 작업을 처리하는 워커의 시퀀스
+
+  ## 예
+  (init-plan [{:pre :A :post :B} {:pre :C :post :B}]
+             {:A 1 :B 2 :C 3}
+             2)
+  => {:at -1
+      :todo ({:work :A :seconds 1 :pre #{}}
+             {:work :B :seconds 2 :pre #{:A :C}}
+             {:work :C :seconds 3 :pre #{}})
+      :done []
+      :workers [{:available-at 0 :work nil}
+                {:available-at 0 :work nil}]}
+  "
+  {:at -1
+   :todo (prepare-todo rules work->seconds)
+   :done []
+   :workers (prepare-workers number-of-workers)})
+
+(init-plan [{:pre :A :post :B} {:pre :C :post :B}]
+           {:A 1 :B 2 :C 3}
+           2)
+
+(defn next-stage
+  "이전 작업 단계를 입력받아 다음 단계로 변환한다.
+
+  ## 인자와 반환 (동일 형식)
+  * 작업 단계: 다음 키를 갖는 해시 맵
+    * :at      작업 단계의 시각 (초)
+    * :todo    작업 단계에서 남은 할 일의 시퀀스
+    * :done    완료한 작업의 벡터
+    * :workers 작업을 처리하는 워커의 시퀀스
+
+  ## 처리
+  * 작업 단계의 상태가 다음 단계의 상태로 변환된다.
+    * :at      워커가 처리하고 있던 작업 중 가장 먼저 완료할 수 있는 작업의 완료 시간으로 이동
+    * :todo    (새 at 기준) 완료한 작업을 각 작업의 선행 조건 작업에서 제거하고, 새로 할당된 작업을 제거
+    * :done    (새 at 기준) 완료한 작업을 추가
+    * :workers (새 at 기준) 작업을 처리하고 있지 않은 워커에 다음 처리할 작업을 할당
+
+  ## 예
+  (next-stage {:at 50
+               :todo ({:work :C :seconds 20 :pre #{:B}})
+               :done [:A]
+               :workers [{:work :B :available-at 100}]})
+  => {:at 100
+      :todo ()
+      :done [:A :B]
+      :workers [{:work :C, :available-at 120}]}
+  "
+  [{:keys [at todo done workers]}]
+  (let [;; 다음 최선 작업 완료 시간으로 이동
+        at (->> workers
+                (map :available-at)
+                (filter #(< at %))
+                (apply min))
+
+        ;; 완료된 작업을 갱신
+        done (->> workers
+                  (filter #(and (= at (:available-at %))
+                                (:work %)))
+                  (map :work)
+                  (into done))
+
+        ;; 각 할 일의 선행 조건 작업에서 완료된 작업을 제외
+        todo (->> todo
+                  (map (fn [todo-item]
+                         (update todo-item :pre #(apply disj % done)))))
+
+        ;; 여유 워커에 새 작업을 할당
+        available-todo-items (->> todo
+                                  (filter (comp empty? :pre))
+                                  (sort-by :work))
+        available-slots (->> (range (count workers))
+                             (filter #(<= (:available-at (nth workers %)) at)))
+        todo-items-and-slots (map vector available-todo-items available-slots)
+        allocate (fn [workers [{work :work seconds :seconds} slot]]
+                   (assoc workers slot {:work work :available-at (+ at seconds)}))
+        workers (reduce allocate workers todo-items-and-slots)
+
+        ;; 할 일에서 할당된 작업을 제외
+        working (set (map :work workers))
+        todo (->> todo
+                  (filter (comp (complement working) :work)))]
+    {:at at :todo todo :done done :workers workers}))
+
+(defn done? [{:keys [at todo workers]}]
+  "작업 단계를 입력받아 모든 작업이 완료되었는지 판단한다."
+  (and (empty? todo)
+       (empty? (filter #(< at (:available-at %))
+                       workers))))
+
+(defn last-stage
+  "작업 단계의 시퀀스 (iterate next-stage (init-plan ...))를 입력받아 마지막 단계를 반환한다."
+  [stage-sequence]
+  (->> stage-sequence
+       (drop-while (complement done?))
+       first))
 
 (def puzzle-input (slurp "data/aoc2018/day7.data"))
 
+(defn ascii-keyword->number [base ascii-keyword]
+  (+ base (int (second (str ascii-keyword)))))
+
 ;; solve part 1
-(->> puzzle-input
-     parse-rule-pairs
-     build-directional-graph
-     (find-full-path 1 (partial work-seconds 1))
+(->> (init-plan (parse-rules puzzle-input)
+                (partial ascii-keyword->number -64)
+                1)
+     (iterate next-stage)
+     last-stage
      :done
+     (map (comp second str))
      (reduce str))
 
 ;; solve part 2
-(->> puzzle-input
-     parse-rule-pairs
-     build-directional-graph
-     (find-full-path 5 (partial work-seconds 61))
-     :turn)
+(->> (init-plan (parse-rules puzzle-input)
+                (partial ascii-keyword->number -4)
+                5)
+     (iterate next-stage)
+     last-stage
+     :at)
