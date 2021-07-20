@@ -143,13 +143,13 @@
     * :workers (새 at 기준) 작업을 처리하고 있지 않은 워커에 다음 처리할 작업을 할당
 
   ## 예
-  (next-stage {:at 50
-               :todo ({:work :C :seconds 20 :pre #{:B}})
-               :done [:A]
+  (next-stage {:at      50
+               :todo    ({:work :C :seconds 20 :pre #{:B}})
+               :done    [:A]
                :workers [{:work :B :available-at 100}]})
-  => {:at 100
-      :todo ()
-      :done [:A :B]
+  => {:at      100
+      :todo    ()
+      :done    [:A :B]
       :workers [{:work :C, :available-at 120}]}
   "
   [{:as stage :keys [at todo done workers]}]
