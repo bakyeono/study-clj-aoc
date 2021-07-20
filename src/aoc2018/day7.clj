@@ -49,7 +49,7 @@
 (defn prepare-workers [n]
   (into [] (take n (repeat default-worker))))
 
-(defn init-plan
+(defn init-stage
   "작업규칙, 작업->시간 함수, 워커의 수를 입력받아, 작업 초기 단계를 설정한다.
 
   ## 인자
@@ -65,9 +65,9 @@
     * :workers 작업을 처리하는 워커의 시퀀스
 
   ## 예
-  (init-plan [{:pre :A :post :B} {:pre :C :post :B}]
-             {:A 1 :B 2 :C 3}
-             2)
+  (init-stage [{:pre :A :post :B} {:pre :C :post :B}]
+              {:A 1 :B 2 :C 3}
+              2)
   => {:at -1
       :todo ({:work :A :seconds 1 :pre #{}}
              {:work :B :seconds 2 :pre #{:A :C}}
@@ -170,7 +170,7 @@
                        workers))))
 
 (defn last-stage
-  "작업 단계 루프(iterate next-stage (init-plan ...))를 입력받아 마지막 단계를 반환한다."
+  "작업 단계 루프(iterate next-stage (init-stage ...))를 입력받아 마지막 단계를 반환한다."
   [stage-sequence]
   (->> stage-sequence
        (drop-while (complement done?))
@@ -195,18 +195,18 @@
 (def puzzle-input (slurp "data/aoc2018/day7.data"))
 
 ;; solve part 1
-(->> (init-plan (parse-rules puzzle-input)
-                (partial ascii-keyword->number -64)
-                1)
+(->> (init-stage (parse-rules puzzle-input)
+                 (partial ascii-keyword->number -64)
+                 1)
      (iterate next-stage)
      last-stage
      :done
      character-keywords->string)
 
 ;; solve part 2
-(->> (init-plan (parse-rules puzzle-input)
-                (partial ascii-keyword->number -4)
-                5)
+(->> (init-stage (parse-rules puzzle-input)
+                 (partial ascii-keyword->number -4)
+                 5)
      (iterate next-stage)
      last-stage
      :at)
