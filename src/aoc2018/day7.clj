@@ -81,6 +81,50 @@
    :done []
    :workers (prepare-workers number-of-workers)})
 
+(defn forward-to-next-finishing-work
+  "at을 워커에 할당된 작업 중 가장 먼저 완료할 수 있는 작업의 완료 시간으로 옮긴다."
+  [{:as stage :keys [at todo done workers]}]
+  (assoc stage :at (->> workers
+                        (map :available-at)
+                        (filter #(< at %))
+                        (apply min))))
+
+(defn add-done-works-into-done
+  "현재 at 기준, 완료한 작업을 done 에 추가한다."
+  [{:as stage :keys [at todo done workers]}]
+  (assoc stage :done (->> workers
+                          (filter #(and (= at (:available-at %))
+                                        (:work %)))
+                          (map :work)
+                          (into done))))
+
+(defn remove-met-prerequisites-from-todo
+  "각 할 일의 선행 조건 작업에서 완료된 작업을 제외한다."
+  [{:as stage :keys [at todo done workers]}]
+  (assoc stage :todo (->> todo
+                          (map (fn [todo-item]
+                                 (update todo-item :pre #(apply disj % done)))))))
+
+(defn allocate-next-works-to-available-workers
+  "여유 워커(들)에 다음에 할 작업(들)을 할당한다."
+  [{:as stage :keys [at todo done workers]}]
+  (let [available-todo-items (->> todo
+                                  (filter (comp empty? :pre))
+                                  (sort-by :work))
+        available-slots (->> (range (count workers))
+                             (filter #(<= (:available-at (nth workers %)) at)))
+        todo-items-and-slots (map vector available-todo-items available-slots)
+        allocate (fn [workers [{work :work seconds :seconds} slot]]
+                   (assoc workers slot {:work work :available-at (+ at seconds)}))]
+    (assoc stage :workers (reduce allocate workers todo-items-and-slots))))
+
+(defn remove-allocated-works-from-todo
+  "할 일에서 워커에 할당된 작업을 제외한다."
+  [{:as stage :keys [at todo done workers]}]
+  (let [allocated? (set (map :work workers))]
+    (assoc stage :todo (->> todo
+                            (filter (comp (complement allocated?) :work))))))
+
 (defn next-stage
   "이전 작업 단계를 입력받아 다음 단계로 변환한다.
 
@@ -93,7 +137,7 @@
 
   ## 처리
   * 작업 단계의 상태가 다음 단계의 상태로 변환된다.
-    * :at      워커가 처리하고 있던 작업 중 가장 먼저 완료할 수 있는 작업의 완료 시간으로 이동
+    * :at      워커가 처리에 할당된 작업 중 가장 먼저 완료할 수 있는 작업의 완료 시간으로 이동
     * :todo    (새 at 기준) 완료한 작업을 각 작업의 선행 조건 작업에서 제거하고, 새로 할당된 작업을 제거
     * :done    (새 at 기준) 완료한 작업을 추가
     * :workers (새 at 기준) 작업을 처리하고 있지 않은 워커에 다음 처리할 작업을 할당
@@ -108,41 +152,14 @@
       :done [:A :B]
       :workers [{:work :C, :available-at 120}]}
   "
-  [{:keys [at todo done workers]}]
-  (let [;; 다음 최선 작업 완료 시간으로 이동
-        at (->> workers
-                (map :available-at)
-                (filter #(< at %))
-                (apply min))
+  [{:as stage :keys [at todo done workers]}]
+  (->> stage
+       forward-to-next-finishing-work            ; 다음 최선 작업 완료 시간으로 이동
+       add-done-works-into-done                  ; 완료된 작업을 갱신
+       remove-met-prerequisites-from-todo        ; 각 할 일의 선행 조건 작업에서 완료된 작업을 제외
+       allocate-next-works-to-available-workers  ; 여유 워커에 다음 작업을 할당
+       remove-allocated-works-from-todo))        ; 할 일에서 할당된 작업을 제외
 
-        ;; 완료된 작업을 갱신
-        done (->> workers
-                  (filter #(and (= at (:available-at %))
-                                (:work %)))
-                  (map :work)
-                  (into done))
-
-        ;; 각 할 일의 선행 조건 작업에서 완료된 작업을 제외
-        todo (->> todo
-                  (map (fn [todo-item]
-                         (update todo-item :pre #(apply disj % done)))))
-
-        ;; 여유 워커에 새 작업을 할당
-        available-todo-items (->> todo
-                                  (filter (comp empty? :pre))
-                                  (sort-by :work))
-        available-slots (->> (range (count workers))
-                             (filter #(<= (:available-at (nth workers %)) at)))
-        todo-items-and-slots (map vector available-todo-items available-slots)
-        allocate (fn [workers [{work :work seconds :seconds} slot]]
-                   (assoc workers slot {:work work :available-at (+ at seconds)}))
-        workers (reduce allocate workers todo-items-and-slots)
-
-        ;; 할 일에서 할당된 작업을 제외
-        working (set (map :work workers))
-        todo (->> todo
-                  (filter (comp (complement working) :work)))]
-    {:at at :todo todo :done done :workers workers}))
 
 (defn done? [{:keys [at todo workers]}]
   "작업 단계를 입력받아 모든 작업이 완료되었는지 판단한다."
@@ -159,12 +176,17 @@
 
 (def keyword->character (comp second str))
 
-(defn ascii-keyword->number [base ascii-keyword]
+(defn ascii-keyword->number
+  "ASCII 코드 하나로 이루어진 키워드를 입력받아 그에 대응하는 부호를 반환한다.
+  base로 조정치를 설정할 수 있다.
+  예를 들어 :A 는 ASCII 코드에서 65이지만, 밑값을 -64로 설정하면 1이 반환된다."
+  [base ascii-keyword]
   (+ base
      (int (keyword->character ascii-keyword))))
 
-(defn get-done-string [{done :done}]
-  (->> done
+(defn character-keywords->string
+  [character-keywords]
+  (->> character-keywords
        (map keyword->character)
        (reduce str)))
 
@@ -176,7 +198,8 @@
                 1)
      (iterate next-stage)
      last-stage
-     get-done-string)
+     :done
+     character-keywords->string)
 
 ;; solve part 2
 (->> (init-plan (parse-rules puzzle-input)
