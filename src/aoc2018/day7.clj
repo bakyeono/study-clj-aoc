@@ -151,7 +151,7 @@
                        workers))))
 
 (defn last-stage
-  "작업 단계의 시퀀스 (iterate next-stage (init-plan ...))를 입력받아 마지막 단계를 반환한다."
+  "작업 단계 루프(iterate next-stage (init-plan ...))를 입력받아 마지막 단계를 반환한다."
   [stage-sequence]
   (->> stage-sequence
        (drop-while (complement done?))
