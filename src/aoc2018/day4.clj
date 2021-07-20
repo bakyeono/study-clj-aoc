@@ -60,8 +60,7 @@
 
 (defn get-highest-frequency [patterns]
   (->> patterns
-       (map #(range (:start %) (:end %)))
-       flatten
+       (mapcat #(range (:start %) (:end %)))
        frequencies
        (apply max-key val)))
 
