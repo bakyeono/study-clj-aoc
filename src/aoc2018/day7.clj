@@ -81,10 +81,6 @@
    :done []
    :workers (prepare-workers number-of-workers)})
 
-(init-plan [{:pre :A :post :B} {:pre :C :post :B}]
-           {:A 1 :B 2 :C 3}
-           2)
-
 (defn next-stage
   "이전 작업 단계를 입력받아 다음 단계로 변환한다.
 
