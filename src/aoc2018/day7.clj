@@ -49,7 +49,7 @@
 (defn prepare-workers [n]
   (into [] (take n (repeat default-worker))))
 
-(defn init-plan [rules work->seconds number-of-workers]
+(defn init-plan
   "작업규칙, 작업->시간 함수, 워커의 수를 입력받아, 작업 초기 단계를 설정한다.
 
   ## 인자
@@ -76,6 +76,7 @@
       :workers [{:available-at 0 :work nil}
                 {:available-at 0 :work nil}]}
   "
+  [rules work->seconds number-of-workers]
   {:at -1
    :todo (prepare-todo rules work->seconds)
    :done []
@@ -161,8 +162,9 @@
        remove-allocated-works-from-todo))        ; 할 일에서 할당된 작업을 제외
 
 
-(defn done? [{:keys [at todo workers]}]
+(defn done?
   "작업 단계를 입력받아 모든 작업이 완료되었는지 판단한다."
+  [{:keys [at todo workers]}]
   (and (empty? todo)
        (empty? (filter #(< at (:available-at %))
                        workers))))
