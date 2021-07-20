@@ -157,10 +157,18 @@
        (drop-while (complement done?))
        first))
 
-(def puzzle-input (slurp "data/aoc2018/day7.data"))
+(def keyword->character (comp second str))
 
 (defn ascii-keyword->number [base ascii-keyword]
-  (+ base (int (second (str ascii-keyword)))))
+  (+ base
+     (int (keyword->character ascii-keyword))))
+
+(defn get-done-string [{done :done}]
+  (->> done
+       (map keyword->character)
+       (reduce str)))
+
+(def puzzle-input (slurp "data/aoc2018/day7.data"))
 
 ;; solve part 1
 (->> (init-plan (parse-rules puzzle-input)
@@ -168,9 +176,7 @@
                 1)
      (iterate next-stage)
      last-stage
-     :done
-     (map (comp second str))
-     (reduce str))
+     get-done-string)
 
 ;; solve part 2
 (->> (init-plan (parse-rules puzzle-input)
