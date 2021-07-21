@@ -4,12 +4,15 @@
             [clojure.set :as set]))
 
 (def rule-pattern #"Step ([A-Z]) must be finished before step ([A-Z]) can begin.")
-
-(defn parse-rule [rule-string]
+(defn parse-rule
+  "rule-pattern 형식의 작업 규칙 문자열을 {:pre 전작업 :post 후작업} 형식의 해시 맵으로 변환한다."
+  [rule-string]
   (let [[_ pre post] (re-matches rule-pattern rule-string)]
     {:pre (keyword pre) :post (keyword post)}))
 
-(defn parse-rules [input]
+(defn parse-rules
+  "각 행마다 rule-pattern 형식으로 이루어진 여러 행의 작업 규칙 문자열을 작업 규칙 시퀀스로 변환한다."
+  [input]
   (->> input
        string/split-lines
        (map parse-rule)))
@@ -46,7 +49,9 @@
     (map make-todo-item works)))
 
 (def default-worker {:available-at 0 :work nil})
-(defn prepare-workers [n]
+(defn prepare-workers
+  "default-worker 형식의 워커를 n개 담은 시퀀스를 만든다."
+  [n]
   (into [] (take n (repeat default-worker))))
 
 (defn init-stage
@@ -187,6 +192,7 @@
      (int (keyword->character ascii-keyword))))
 
 (defn character-keywords->string
+  "문자 키워드들의 시퀀스를 하나의 문자열로 합친다."
   [character-keywords]
   (->> character-keywords
        (map keyword->character)
