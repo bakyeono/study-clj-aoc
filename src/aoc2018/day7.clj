@@ -159,12 +159,12 @@
       :workers [{:work :C, :available-at 120}]}
   "
   [{:as stage :keys [at todo done workers]}]
-  (->> stage
-       forward-to-next-finishing-work            ; 다음 최선 작업 완료 시간으로 이동
-       add-done-works-into-done                  ; 완료된 작업을 갱신
-       remove-met-prerequisites-from-todo        ; 각 할 일의 선행 조건 작업에서 완료된 작업을 제외
-       allocate-next-works-to-available-workers  ; 여유 워커에 다음 작업을 할당
-       remove-allocated-works-from-todo))        ; 할 일에서 할당된 작업을 제외
+  (-> stage
+      forward-to-next-finishing-work            ; 다음 최선 작업 완료 시간으로 이동
+      add-done-works-into-done                  ; 완료된 작업을 갱신
+      remove-met-prerequisites-from-todo        ; 각 할 일의 선행 조건 작업에서 완료된 작업을 제외
+      allocate-next-works-to-available-workers  ; 여유 워커에 다음 작업을 할당
+      remove-allocated-works-from-todo))        ; 할 일에서 할당된 작업을 제외
 
 
 (defn done?
