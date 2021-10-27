@@ -10,7 +10,8 @@
 
 (defn duplicated-n-times? [n coll]
   (->> (frequencies coll)
-       (filter #(= (second %) n))
+       vals
+       (filter #(= % n))
        first))
 (def twice? (partial duplicated-n-times? 2))
 (def triple? (partial duplicated-n-times? 3))
