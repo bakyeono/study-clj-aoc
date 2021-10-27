@@ -1,8 +1,7 @@
 ;; https://adventofcode.com/2018/day/2
 (ns aoc2018.day2
   (:require [clojure.string :as string]
-            [clojure.math.combinatorics :as combinatorics]
-            [util.util :as util]))
+            [clojure.math.combinatorics :as combinatorics]))
 
 (defn parse-input [input]
   (->> input
@@ -16,8 +15,10 @@
 (def twice? (partial duplicated-n-times? 2))
 (def triple? (partial duplicated-n-times? 3))
 
-(defn common [[a b]]
-  (map #(when (= %1 %2) %1) a b))
+(defn same [[a b]]
+  (map #(when (= %1 %2)
+          %1)
+       a b))
 
 (def puzzle-input (slurp "data/aoc2018/day2.data"))
 
@@ -31,7 +32,7 @@
 (->> puzzle-input
      parse-input
      (#(combinatorics/combinations % 2))
-     (map common)
+     (map same)
      (filter #(= 1
                  (count (filter nil? %))))
      first
