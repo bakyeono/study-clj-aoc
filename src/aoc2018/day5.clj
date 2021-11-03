@@ -7,9 +7,8 @@
 (def reactive-patterns
   (->> unit-types
        (map str)
-       (map #(vector (re-pattern (str % (.toUpperCase %)))
-                     (re-pattern (str (.toUpperCase %) %))))
-       (reduce into)))
+       (mapcat #(vector (re-pattern (str % (.toUpperCase %)))
+                        (re-pattern (str (.toUpperCase %) %))))))
 
 (defn react-to-a-pattern [polymer reactive-pattern]
   (string/replace polymer reactive-pattern ""))
