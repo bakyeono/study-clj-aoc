@@ -1,6 +1,5 @@
 ;; https://adventofcode.com/2018/day/4
 (ns aoc2018.day4
-  (:require [java-time])
   (:require [clojure.string :as string]))
 
 (def log-entry-pattern
@@ -66,6 +65,7 @@
 
 (defn get-best-guard-by [compare-by grouped-patterns]
   (apply max-key (comp compare-by second) grouped-patterns))
+
 (def get-most-slept-guard (partial get-best-guard-by sum-duration))
 (def get-most-frequently-slept-guard (partial get-best-guard-by (comp second get-highest-frequency)))
 
