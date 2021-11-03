@@ -37,7 +37,7 @@
                              (keep plane)
                              (filter number?)
                              set)]
-    (case (count (keys vicinity-values))
+    (case (count vicinity-values)
       0 :unfilled
       1 (first vicinity-values)
       2 :balanced
