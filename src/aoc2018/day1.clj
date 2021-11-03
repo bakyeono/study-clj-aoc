@@ -3,27 +3,23 @@
   (:require [clojure.string :as string]
             [util.util :as util]))
 
-(defn parse-input [input]
-  (->> input
-       string/split-lines
-       (map #(Integer/parseInt %))))
-
-(defn reduce-frequency-changes [changes]
-  (reduce + changes))
-
-(defn history [start changes]
-  (reductions + start changes))
-
 (def puzzle-input (slurp "data/aoc2018/day1.data"))
 
 ;; solve part 1
 (->> puzzle-input
-     parse-input
-     reduce-frequency-changes)
+     string/split-lines
+     (map #(Integer/parseInt %))
+     (reduce +))
+
+(defn get-duplicated-or-store [seen-set value]
+  (if (seen-set value)
+    (reduced value)
+    (conj seen-set value)))
 
 ;; solve part 2
 (->> puzzle-input
-     parse-input
+     string/split-lines
+     (map #(Integer/parseInt %))
      cycle
-     (history 0)
-     util/get-first-duplicated)
+     (reductions +)
+     (reduce get-duplicated-or-store #{}))
