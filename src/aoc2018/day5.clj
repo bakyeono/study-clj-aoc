@@ -16,14 +16,14 @@
 (defn react [polymer]
   (reduce react-to-a-pattern polymer reactive-patterns))
 
-(defn iterate-to-last [f x]
+(defn fixed-point [f x]
   (reduce #(if (= %1 %2)
              (reduced %1)
              %2)
           (iterate f x)))
 
 (defn shrink [polymer]
-  (iterate-to-last react polymer))
+  (fixed-point react polymer))
 
 
 (def puzzle-input (slurp "data/aoc2018/day5.data"))

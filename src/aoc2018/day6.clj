@@ -52,7 +52,7 @@
                 [coordinate value])))
        (into {})))
 
-(defn iterate-to-last [f x]
+(defn fixed-point [f x]
   (reduce #(if (= %1 %2)
              (reduced %1)
              %2)
@@ -74,7 +74,7 @@
        #_expand
        #_expand
        #_expand
-       #_(iterate-to-last expand)
+       #_(fixed-point expand)
        print-plane))
 
 (def puzzle-input (slurp "data/aoc2018/day6.data"))
@@ -91,7 +91,7 @@
   (->> puzzle-input
        parse-coordinates
        init-plane
-       (iterate-to-last expand)
+       (fixed-point expand)
        calc-taken-area
        vals
        (apply max)))
