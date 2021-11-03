@@ -1,6 +1,5 @@
 ;; https://adventofcode.com/2018/day/5
 (ns aoc2018.day5
-  (:require [java-time])
   (:require [clojure.string :as string]))
 
 (def unit-types "abcdefghijklmnopqrstuvwxyz")
