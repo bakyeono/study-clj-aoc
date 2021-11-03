@@ -1,91 +1,54 @@
-;; https://adventofcode.com/2018/day/4
-(ns aoc2018.day4
+;; https://adventofcode.com/2018/day/5
+(ns aoc2018.day5
   (:require [java-time])
   (:require [clojure.string :as string]))
 
-(def log-entry-pattern
-  #"\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2})\] (.*)")
+(def unit-types "abcdefghijklmnopqrstuvwxyz")
 
-(defn coerce-minute [timestamp-string]
-  (->> timestamp-string
-       (re-matches #"\d{4}-\d{2}-\d{2} \d{2}:(\d{2})")
-       second
-       Integer/parseInt))
+(def reactive-patterns
+  (->> unit-types
+       (map str)
+       (map #(vector (re-pattern (str % (.toUpperCase %)))
+                     (re-pattern (str (.toUpperCase %) %))))
+       (reduce into)))
 
-(defn coerce-action
-  [action-string]
-  (if (re-matches #"Guard #\d+ begins shift" action-string)
-    :switch
-    (cond (= action-string "falls asleep") :sleep-start
-          (= action-string "wakes up") :sleep-end)))
+(defn react-to-a-pattern [polymer reactive-pattern]
+  (string/replace polymer reactive-pattern ""))
 
-(defn coerce-guard [action-string]
-  (when-let [matches (re-matches #"Guard #(\d+) begins shift" action-string)]
-    (Integer/parseInt (second matches))))
+(defn react [polymer]
+  (reduce react-to-a-pattern polymer reactive-patterns))
 
-(defn parse-logs [logs]
-  (->> logs
-       string/split-lines
-       sort
-       (map #(re-matches log-entry-pattern %))
-       (map #(hash-map :minute (coerce-minute (nth % 1))
-                       :action (coerce-action (nth % 2))
-                       :guard  (coerce-guard (nth % 2))))))
+(defn iterate-to-last [f x]
+  (reduce #(if (= %1 %2)
+             (reduced %1)
+             %2)
+          (iterate f x)))
 
-(defn collect-patterns [history]
-  (reduce (fn [{patterns :patterns
-                {prev-action :action prev-guard :guard prev-minute :minute} :prev-event}
-               {:keys [action guard minute] :as new-event}]
-            {:patterns (if (and (= prev-action :sleep-start)
-                                (#{:switch :sleep-end} action))
-                         (conj patterns {:guard prev-guard
-                                         :start prev-minute
-                                         :end minute
-                                         :duration (- minute prev-minute)})
-                         patterns)
-             :prev-event (assoc new-event :guard (or guard prev-guard))})
-          {:patterns []
-           :prev-event {:guard nil :action nil :minute nil}}
-          history))
+(defn shrink [polymer]
+  (iterate-to-last react polymer))
 
-(defn collect-patterns-by-guard [history]
-  (->> (collect-patterns history)
-       :patterns
-       (group-by :guard)))
 
-(defn sum-duration [patterns]
-  (->> patterns
-       (map :duration)
-       (reduce + 0)))
-
-(defn get-highest-frequency [patterns]
-  (->> patterns
-       (mapcat #(range (:start %) (:end %)))
-       frequencies
-       (apply max-key val)))
-
-(defn get-best-guard-by [compare-by grouped-patterns]
-  (apply max-key (comp compare-by second) grouped-patterns))
-(def get-most-slept-guard (partial get-best-guard-by sum-duration))
-(def get-most-frequently-slept-guard (partial get-best-guard-by (comp second get-highest-frequency)))
-
-(defn get-most-frequently-sleeping-minute-of-guard [[guard pattern]]
-  [guard (first (get-highest-frequency pattern))])
-
-(def puzzle-input (slurp "data/aoc2018/day4.data"))
+(def puzzle-input (slurp "data/aoc2018/day5.data"))
 
 ;; solve part 1
 (->> puzzle-input
-     parse-logs
-     collect-patterns-by-guard
-     get-most-slept-guard
-     get-most-frequently-sleeping-minute-of-guard
-     (reduce *))
+     shrink
+     count)
+
+(defn remove-a-unit-type [unit-type polymer]
+  (-> polymer
+      (string/replace (str unit-type) "")
+      (string/replace (.toUpperCase (str unit-type)) "")))
+
+(defn find-problematic-unit-type [polymer]
+  (->> unit-types
+       (map #(hash-map :removed-unit-type %
+                       :polymer-length (->> polymer
+                                            (remove-a-unit-type %)
+                                            shrink
+                                            count)))
+       (apply min-key :polymer-length)))
 
 ;; solve part 2
 (->> puzzle-input
-     parse-logs
-     collect-patterns-by-guard
-     get-most-frequently-slept-guard
-     get-most-frequently-sleeping-minute-of-guard
-     (reduce *))
+     find-problematic-unit-type)
