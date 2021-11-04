@@ -30,7 +30,7 @@
                [coordinate value]))))
 
 (defn vicinity [[x y]]
-  (->> [[x (dec y)] [x (inc y)] [(dec x) y] [(inc x) y]]))
+  [[x (dec y)] [x (inc y)] [(dec x) y] [(inc x) y]])
 
 (defn pull-vicinity-value [coordinate plane]
   (let [vicinity-values (->> (vicinity coordinate)
@@ -64,7 +64,7 @@
       (doseq [[x value] (sort line)]
         (print (case value
                  :unfilled ".  "
-                 :balanced "++ "
+                 :balanced " / "
                  (format "%02d " value))))
       (println))))
 
