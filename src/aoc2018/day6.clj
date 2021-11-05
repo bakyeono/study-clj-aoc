@@ -13,15 +13,28 @@
 
 (defn boundary [coordinates]
   {:x-start (apply min (map first coordinates))
-   :x-end (inc (apply max (map first coordinates)))
    :y-start (apply min (map second coordinates))
-   :y-end (inc (apply max (map second coordinates)))})
+   :x-end   (apply max (map first coordinates))
+   :y-end   (apply max (map second coordinates))})
+
+(defn mark-boundary [plane]
+  (let [boundary (->> plane keys boundary)]
+    (->> plane
+         #_TODO
+         ,)))
+
+(defn clear-boundary-area [plane]
+  (->> plane
+       mark-boundary
+       (fixed-point expand-boundary)
+       (filter (fn [[coordinate] value]
+                 (not= value :boundary)))))
 
 (defn init-plane [coordinates]
   (let [coordinates (vec coordinates)
         {:keys [x-start x-end y-start y-end]} (boundary coordinates)]
-    (into {} (for [x (range x-start x-end)
-                   y (range y-start y-end)
+    (into {} (for [x (range x-start (inc x-end))
+                   y (range y-start (inc y-end))
                    :let [coordinate [x y]
                          index (.indexOf coordinates coordinate)
                          value (if (= index -1)
@@ -35,8 +48,7 @@
 (defn pull-vicinity-value [coordinate plane]
   (let [vicinity-values (->> (vicinity coordinate)
                              (keep plane)
-                             (filter number?)
-                             set)]
+                             (filter number?))]
     (case (count vicinity-values)
       0 :unfilled
       1 (first vicinity-values)
@@ -69,7 +81,7 @@
       (println))))
 
 (comment
-  (->> [[0 0] [5 5] [8 8] [6 14] [15 15]]
+  (->> [[0 0] [5 5] [8 8] [6 14] [13 1] [15 15]]
        init-plane
        #_expand
        #_expand
@@ -90,8 +102,10 @@
 (comment
   (->> puzzle-input
        parse-coordinates
+       #_[[0 0] [5 5] [8 8] [6 14] [13 1] [15 15]]
        init-plane
        (fixed-point expand)
+       clear-infinite-area
        calc-taken-area
        vals
        (apply max)))
