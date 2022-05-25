@@ -11,7 +11,7 @@
      (map #(Integer/parseInt %))
      (reduce +))
 
-(defn get-duplicated-or-store [seen-set value]
+(defn get-first-duplicated [seen-set value]
   (if (seen-set value)
     (reduced value)
     (conj seen-set value)))
@@ -22,4 +22,4 @@
      (map #(Integer/parseInt %))
      cycle
      (reductions +)
-     (reduce get-duplicated-or-store #{}))
+     (reduce get-first-duplicated #{}))
