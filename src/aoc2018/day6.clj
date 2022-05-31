@@ -2,6 +2,23 @@
 (ns aoc2018.day6
   (:require [clojure.string :as string]))
 
+;; coordinate -- 좌표. [x y] 형태의 벡터
+;;
+
+;; plane -- 좌표평면. {coordinate: value} 형태의 맵
+;;   이 때 value는 수(정점번호) 또는 키워드(특수 상태)다.
+;;   특수 상태는 다음과 같다.
+;;   :unfilled -- 아직 어느 정점에 속하는지 확인하지 않은 상태
+;;   :balanced -- 정점 사이의 균형점에 있어, 정점에 속하지 않는 상태
+;;   :boundary -- 경계 밖으로 나간 정점에 속한 상태
+;;
+
+(defn fixed-point [f x]
+  (reduce #(if (= %1 %2)
+             (reduced %1)
+             %2)
+          (iterate f x)))
+
 (defn parse-coordinate [coordinate-str]
   (->> (string/split coordinate-str #",\s*")
        (mapv #(Integer/parseInt %))))
@@ -13,22 +30,9 @@
 
 (defn boundary [coordinates]
   {:x-start (apply min (map first coordinates))
-   :y-start (apply min (map second coordinates))
    :x-end   (apply max (map first coordinates))
+   :y-start (apply min (map second coordinates))
    :y-end   (apply max (map second coordinates))})
-
-(defn mark-boundary [plane]
-  (let [boundary (->> plane keys boundary)]
-    (->> plane
-         #_TODO
-         ,)))
-
-(defn clear-boundary-area [plane]
-  (->> plane
-       mark-boundary
-       (fixed-point expand-boundary)
-       (filter (fn [[coordinate] value]
-                 (not= value :boundary)))))
 
 (defn init-plane [coordinates]
   (let [coordinates (vec coordinates)
@@ -48,7 +52,8 @@
 (defn pull-vicinity-value [coordinate plane]
   (let [vicinity-values (->> (vicinity coordinate)
                              (keep plane)
-                             (filter number?))]
+                             (filter number?)
+                             set)]
     (case (count vicinity-values)
       0 :unfilled
       1 (first vicinity-values)
@@ -64,29 +69,42 @@
                 [coordinate value])))
        (into {})))
 
-(defn fixed-point [f x]
-  (reduce #(if (= %1 %2)
-             (reduced %1)
-             %2)
-          (iterate f x)))
+(defn find-boundary-values [plane]
+  (let [{:keys [x-start x-end y-start y-end]} (->> plane keys boundary)]
+    (->> plane
+         (keep (fn [[[x y] value]]
+                 (when (or (= x x-start) (= x x-end) (= y y-start) (= y y-end))
+                   value)))
+         set)))
+
+(defn mark-boundary-values [plane]
+  (let [boundary-values (find-boundary-values plane)]
+    (->> plane
+         (map (fn [[_coordinate value]]
+                   (if (get boundary-values value)
+                     [_coordinate :boundary]
+                     [_coordinate value])))
+         (into {}))))
 
 (defn print-plane [plane]
   (let [lines-by-y (group-by (comp second key) plane)]
-    (doseq [[y line] (sort lines-by-y)]
-      (doseq [[x value] (sort line)]
+    (doseq [[_y line] (sort lines-by-y)]
+      (doseq [[_x value] (sort line)]
         (print (case value
                  :unfilled ".  "
                  :balanced " / "
+                 :boundary "~~ "
                  (format "%02d " value))))
       (println))))
 
 (comment
   (->> [[0 0] [5 5] [8 8] [6 14] [13 1] [15 15]]
        init-plane
-       #_expand
+       expand
        #_expand
        #_expand
        #_(fixed-point expand)
+       #_mark-boundary-values
        print-plane))
 
 (def puzzle-input (slurp "data/aoc2018/day6.data"))
@@ -105,7 +123,7 @@
        #_[[0 0] [5 5] [8 8] [6 14] [13 1] [15 15]]
        init-plane
        (fixed-point expand)
-       clear-infinite-area
+       mark-boundary-values
        calc-taken-area
        vals
        (apply max)))
