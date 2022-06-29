@@ -23,18 +23,20 @@
 
 (def puzzle-input (slurp "data/aoc2018/day2.data"))
 
-;; solve part 1
-(->> puzzle-input
-     parse-input
-     (#(* (count (filter twice? %))
-          (count (filter triple? %)))))
+(comment
+  ;; solve part 1
+  (->> puzzle-input
+       parse-input
+       (#(* (count (filter twice? %))
+            (count (filter triple? %)))))
 
-;; solve part 2
-(->> puzzle-input
-     parse-input
-     (#(combinatorics/combinations % 2))
-     (map same)
-     (filter #(= 1
-                 (count (filter nil? %))))
-     first
-     (apply str))
+  ;; solve part 2
+  (->> puzzle-input
+       parse-input
+       (#(combinatorics/combinations % 2))
+       (map same)
+       (filter #(= 1
+                   (count (filter nil? %))))
+       first
+       (apply str))
+  )
