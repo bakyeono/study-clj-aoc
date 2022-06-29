@@ -1,7 +1,7 @@
 ;; https://adventofcode.com/2020/day/8
 (ns aoc2020.day8
   (:require [clojure.string :as string])
-  (:use [util util]))
+  (:require [util.util]))
 
 (defn parse-program-line [line]
   [(keyword (first line))
@@ -33,6 +33,6 @@
        parse-program
        init-process
        (iterate step)
-       (filter #(get-first-duplicated (:history %)))
+       (filter #(util.util/get-first-duplicated (:history %)))
        first
        :acc))
