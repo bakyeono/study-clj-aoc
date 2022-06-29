@@ -73,7 +73,10 @@
   (let [{:keys [x-start x-end y-start y-end]} (->> plane keys boundary)]
     (->> plane
          (keep (fn [[[x y] value]]
-                 (when (or (= x x-start) (= x x-end) (= y y-start) (= y y-end))
+                 (when (or (= x x-start)
+                           (= x x-end)
+                           (= y y-start)
+                           (= y y-end))
                    value)))
          set)))
 
@@ -95,12 +98,13 @@
                  :balanced " / "
                  :boundary "~~ "
                  (format "%02d " value))))
-      (println))))
+      (println))
+    (println)))
 
 (comment
   (->> [[0 0] [5 5] [8 8] [6 14] [13 1] [15 15]]
        init-plane
-       expand
+       #_expand
        #_expand
        #_expand
        #_(fixed-point expand)
@@ -127,7 +131,6 @@
        calc-taken-area
        vals
        (apply max)))
-
 
 (defn distance [[ax ay] [bx by]]
   (+ (Math/abs (- ax bx))
