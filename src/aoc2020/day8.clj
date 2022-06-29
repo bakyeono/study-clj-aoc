@@ -15,7 +15,10 @@
 (def get-instruction nth)
 
 (defn init-process [program]
-  {:program program :pc 0 :history [] :acc 0})
+  {:program program
+   :history []
+   :pc      0
+   :acc     0})
 
 (defn step [{:keys [program pc history acc] :as process}]
   (let [[opcode operand] (get-instruction program pc)
