@@ -25,13 +25,14 @@
       :acc (assoc process :pc (inc pc)       :acc (+ acc operand))
       :jmp (assoc process :pc (+ pc operand) :acc acc))))
 
-(def puzzle-input (slurp "data/aoc2020/day8.data"))
+(comment
+  @(def puzzle-input (slurp "data/aoc2020/day8.data"))
 
-;; solve part 1
-(->> puzzle-input
-     parse-program
-     init-process
-     (iterate step)
-     (filter #(get-first-duplicated (:history %)))
-     first
-     :acc)
+  ;; solve part 1
+  (->> puzzle-input
+       parse-program
+       init-process
+       (iterate step)
+       (filter #(get-first-duplicated (:history %)))
+       first
+       :acc))
